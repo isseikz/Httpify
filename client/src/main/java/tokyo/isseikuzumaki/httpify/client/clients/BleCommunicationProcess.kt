@@ -9,6 +9,7 @@ import android.bluetooth.le.ScanSettings
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.ParcelUuid
+import android.util.Log
 import androidx.core.app.ActivityCompat
 import kotlinx.coroutines.*
 import tokyo.isseikuzumaki.httpify.core.Constants
@@ -43,7 +44,7 @@ class BleCommunicationProcess(
         }
 
         override fun onServicesDiscovered(gatt: BluetoothGatt?, status: Int) {
-            gatt?.services?.first()?.let {
+            gatt?.services?.firstOrNull { filter.first().serviceUuid?.uuid == it.uuid }?.let {
                 connection = Connection(gatt, it).also { conn ->
                     onService?.invoke(conn)
                 }
@@ -152,6 +153,7 @@ class BleCommunicationProcess(
             }
 
             override fun onBatchScanResults(results: MutableList<ScanResult>?) {
+                Log.d("BleCommunicatnionCprocess", "results: $results")
                 super.onBatchScanResults(results)
             }
 
@@ -181,6 +183,7 @@ class BleCommunicationProcess(
                 onScanFailed = null
             }
 
+
             currentScanCallback?.let {
                 scanner.stopScan(it)
             }
@@ -202,7 +205,7 @@ class BleCommunicationProcess(
                 gattCallback.onService = null
                 cont.resume(connection)
             }
-            device.connectGatt(context, true, gattCallback)
+            device.connectGatt(context, false, gattCallback)
         }
     }
 
@@ -227,8 +230,9 @@ class BleCommunicationProcess(
         )
         var settings: ScanSettings = ScanSettings.Builder().apply {
             setCallbackType(ScanSettings.CALLBACK_TYPE_FIRST_MATCH)
-            setMatchMode(ScanSettings.MATCH_MODE_STICKY)
-            setScanMode(ScanSettings.SCAN_MODE_BALANCED)
+            setMatchMode(ScanSettings.MATCH_MODE_AGGRESSIVE)
+            setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+            setNumOfMatches(ScanSettings.MATCH_NUM_ONE_ADVERTISEMENT)
         }.build()
         fun build(context: Context): BleCommunicationProcess {
             val adapter = context.getSystemService(BluetoothManager::class.java).adapter
